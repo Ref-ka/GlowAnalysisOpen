@@ -10,3 +10,4 @@ videos/*
 loss_data.csv
 predictor_loss.csv
 .venv
+.idea
