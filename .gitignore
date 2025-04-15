@@ -1,0 +1,11 @@
+images
+!images/README.md
+labels/label_studio_json_labels
+labels/label_studio_prepared_images
+trained_models
+!trained_models/README.md
+videos
+!videos/README.md
+21_01_25.zip
+loss_data.csv
+predictor_loss.csv
