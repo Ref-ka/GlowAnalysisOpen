@@ -23,7 +23,7 @@ def extract_frames(video_path, output_folder, frame_rate=1):
     while True:
         ret, frame = cap.read()
         if not ret:
-            break  # Exit the loop if no more frames are available
+            break
 
         # Save the frame if it matches the frame rate condition
         if frame_count % frame_rate == 0:
@@ -37,10 +37,5 @@ def extract_frames(video_path, output_folder, frame_rate=1):
     print(f"Extraction complete. {saved_count} frames saved to {output_folder}.")
 
 
-# Example usage
 if __name__ == "__main__":
-    video_file = "videos/1_2.avi"  # Replace with your .avi video file path
-    output_dir = "unprepared_images"  # Replace with your desired output folder
-    frame_skip = 20  # Save every frame (set to 2 to save every second frame, etc.)
-
-    extract_frames(video_file, output_dir, frame_skip)
+    pass
