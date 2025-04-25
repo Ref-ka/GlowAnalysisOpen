@@ -1,11 +1,12 @@
 import cv2
 import os
+from pathlib import Path
 
 
-def extract_frames(video_path, output_folder, frame_rate=1):
+def extract_frames(video_path, output_dir, frame_rate=1):
     # Check if the output folder exists, if not, create it
-    if not os.path.exists(output_folder):
-        os.makedirs(output_folder)
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
 
     # Open the video file
     cap = cv2.VideoCapture(video_path)
@@ -27,14 +28,20 @@ def extract_frames(video_path, output_folder, frame_rate=1):
 
         # Save the frame if it matches the frame rate condition
         if frame_count % frame_rate == 0:
-            frame_filename = os.path.join(output_folder, f"frame_1_2_{frame_count:06d}.png")
+            frame_filename = os.path.join(output_dir, f"frame_{Path(video_path).name}_{frame_count:06d}.png")
             cv2.imwrite(frame_filename, frame)
             saved_count += 1
 
         frame_count += 1
 
     cap.release()
-    print(f"Extraction complete. {saved_count} frames saved to {output_folder}.")
+    print(f"Extraction complete. {saved_count} frames saved to {output_dir}.")
+
+
+def cut_videos(video_dir: str, output_dir: str, frame_rate=1):
+    for video_name in os.listdir(video_dir):
+        extract_frames(video_dir + "\\" + video_name, output_dir, frame_rate)
+    print("Videos have been cut successfully!!!")
 
 
 if __name__ == "__main__":
