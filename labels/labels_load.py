@@ -1,7 +1,9 @@
 import json
 
+from paths import TRAIN_DATA_DIR
 
-def get_coordinates(labels_file):
+
+def get_coordinates(labels_file: str, image_size: int):
     with open(labels_file) as file:
         data = json.load(file)
 
@@ -10,29 +12,42 @@ def get_coordinates(labels_file):
         if image["drafts"]:
             coordinates.append(
                 [
-                    round((image['drafts'][0]["result"][0]["value"]["x"] / 100) * 256),
-                    round((image['drafts'][0]["result"][0]["value"]["y"] / 100) * 256),
-                    round(((image['drafts'][0]["result"][0]["value"]["x"] + image['drafts'][0]["result"][0]["value"][
-                        "width"]) / 100) * 256),
-                    round(((image['drafts'][0]["result"][0]["value"]["y"]) + image['drafts'][0]["result"][0]["value"][
-                        "height"]) / 100 * 256)
+                    int((image['drafts'][0]["result"][0]["value"]["x"] / 100) * image_size),
+                    int((image['drafts'][0]["result"][0]["value"]["y"] / 100) * image_size),
+                    int(((image['drafts'][0]["result"][0]["value"]["x"] + image['drafts'][0]["result"][0]["value"][
+                        "width"]) / 100) * image_size),
+                    int(((image['drafts'][0]["result"][0]["value"]["y"]) + image['drafts'][0]["result"][0]["value"][
+                        "height"]) / 100 * image_size)
                 ]
             )
         else:
             coordinates.append(
                 [
-                    round((image['annotations'][0]["result"][0]["value"]["x"] / 100) * 256),
-                    round((image['annotations'][0]["result"][0]["value"]["y"] / 100) * 256),
-                    round(
+                    int((image['annotations'][0]["result"][0]["value"]["x"] / 100) * image_size),
+                    int((image['annotations'][0]["result"][0]["value"]["y"] / 100) * image_size),
+                    int(
                         ((image['annotations'][0]["result"][0]["value"]["x"] + image['annotations'][0]["result"][0]["value"][
-                            "width"]) / 100) * 256),
-                    round(((image['annotations'][0]["result"][0]["value"]["y"]) +
+                            "width"]) / 100) * image_size),
+                    int(((image['annotations'][0]["result"][0]["value"]["y"]) +
                            image['annotations'][0]["result"][0]["value"][
-                               "height"]) / 100 * 256)
+                               "height"]) / 100 * image_size)
                 ]
             )
     return coordinates
 
 
+def get_glow_classes(label_file: str):
+    with open(label_file) as file:
+        data = json.load(file)
+
+    glow_classes = []
+    for image in data:
+        if image["annotations"][0]["result"][0]["value"]["rectanglelabels"][0] == "no_glow":
+            glow_classes.append(0)
+        else:
+            glow_classes.append(1)
+    return glow_classes
+
+
 if __name__ == "__main__":
-    print(get_coordinates("project-2-at-2025-03-28-21-19-2a62a146.json"))
+    print(get_glow_classes(TRAIN_DATA_DIR + "\\14.04.2025\\images\\for_detector\\labels.json"))

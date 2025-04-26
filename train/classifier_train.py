@@ -5,6 +5,10 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms, models
 from PIL import Image
 import os
+import datetime
+
+from paths import TRAIN_DATA_DIR, MODELS_DIR
+from labels.labels_load import get_glow_classes
 
 
 # 1. Dataset Preparation
@@ -43,16 +47,19 @@ class PretrainedResNet(nn.Module):
 def main():
     # Paths to images and labels
     # Labels has been hardcoded. You need to make it through label-studio in a good way.
-    image_paths = list(map(lambda x: "classifier_train/" + x, os.listdir("classifier_train")))
-    labels = [0, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
-              0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0,
-              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]
+    dir_names = ["14.04.2025"]
+    image_paths = []
+    labels = []
+    for name in dir_names:
+        for dir_type in ["for_detector", "for_predictor"]:
+            dir_path = TRAIN_DATA_DIR + "\\" + name + f"\\images\\{dir_type}\\prepared"
+            image_paths += list(map(lambda image_name: dir_path + "\\" + image_name, os.listdir(dir_path)))
+            labels += get_glow_classes(TRAIN_DATA_DIR + "\\" + name + f"\\images\\{dir_type}\\labels.json")
 
     # Image transformations
     transform = transforms.Compose([
-        transforms.Resize((256, 256)),  # Resize images to 256x256
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.03433408, 0.03569807, 0.03586486], std=[0.12090005, 0.12593228, 0.1222396])
+        transforms.Normalize(mean=[0.04102539, 0.13573588, 0.08836696], std=[0.1449014, 0.22010248, 0.19639405])
     ])
 
     # Create dataset and dataloader
@@ -94,7 +101,7 @@ def main():
         print(f"Epoch {epoch + 1}/{num_epochs}, Loss: {running_loss / len(dataloader)}")
 
     # Save the model
-    model_path = "pretrained_resnet_model.pth"
+    model_path = MODELS_DIR + f"\\classifier\\resnet_{datetime.datetime.now().date()}.pth"
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
 

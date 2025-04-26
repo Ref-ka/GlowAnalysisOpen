@@ -1,7 +1,6 @@
-from process.image_preprocessing import preprocess_images
-from process.video_to_images import cut_videos
-from process.image_resizing import crop_images
-from process.data_info import calculate_mean_std
+from preprocess.image_preprocessing import preprocess_images
+from preprocess.video_to_images import cut_videos
+from preprocess.image_resizing import crop_images
 
 from paths import TRAIN_DATA_DIR
 
@@ -30,8 +29,6 @@ def prepare_images(dir_list: list[str], image_size: int, shift_list: list[list[l
                     "c",
                     directory + "\\images\\for_predictor\\prepared",
                     shift_list[i][1])
-
-    print(calculate_mean_std(dir_list))
 
 
 if __name__ == "__main__":

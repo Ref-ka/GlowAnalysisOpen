@@ -7,11 +7,12 @@ from image_processing import load_model, preprocess_image, postprocess_detection
 from train.classifier_train import PretrainedResNet
 from train.detector_train import GlowDetector
 from train.predictor_train import Predictor
+from paths import MODELS_DIR, TESTING_DATA_DIR
 
 # Paths to your models
-CLASSIFIER_MODEL_PATH = r"..\trained_models\pretrained_resnet_model.pth"
-DETECTOR_MODEL_PATH = r"..\trained_models\glow_detector_resnet.pth"
-PREDICTOR_MODEL_PATH = r"..\trained_models\resnet_predictor.pth"
+CLASSIFIER_MODEL_PATH = MODELS_DIR + "\\classifier\\resnet_2025-04-26.pth"
+DETECTOR_MODEL_PATH = MODELS_DIR + "\\detector\\resnet_2025-04-26.pth"
+PREDICTOR_MODEL_PATH = MODELS_DIR + "\\predictor\\resnet_2025-04-25.pth"
 
 # Load models
 classifier_model = load_model(CLASSIFIER_MODEL_PATH, PretrainedResNet)
@@ -19,8 +20,8 @@ detector_model = load_model(DETECTOR_MODEL_PATH, GlowDetector)
 prediction_model = load_model(PREDICTOR_MODEL_PATH, Predictor)
 
 
-# Video process function
-def process_video(video_path, output_video_path, size=256):
+# Video preprocess function
+def process_video(video_path, output_video_path, size=300):
     # Open the video file
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -46,7 +47,7 @@ def process_video(video_path, output_video_path, size=256):
         frame_count += 1
         print(f"Processing frame {frame_count}/{total_frames}...")
 
-        # Convert the frame to PIL Image for process
+        # Convert the frame to PIL Image for preprocess
         pil_image = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
 
         # Preprocess the frame
@@ -120,11 +121,11 @@ def process_video(video_path, output_video_path, size=256):
     # Release resources
     cap.release()
     out.release()
-    print("Video process complete. Output saved to:", output_video_path)
+    print("Video preprocess complete. Output saved to:", output_video_path)
 
 
 if __name__ == "__main__":
-    input_video_path = r"..\videos\1_prepared.avi"
-    output_video_path = r"..\videos\output_video_2_feat.avi"
+    input_video_path = TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3_resized.avi"
+    output_video_path = TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3_processed.avi"
 
     process_video(input_video_path, output_video_path)

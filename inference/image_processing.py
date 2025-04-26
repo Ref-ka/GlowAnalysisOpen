@@ -27,7 +27,7 @@ def load_model(model_path, model_class):
 def preprocess_image(image_input):
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.03433408, 0.03569807, 0.03586486], std=[0.12090005, 0.12593228, 0.1222396])
+        transforms.Normalize(mean=[0.04102539, 0.13573588, 0.08836696], std=[0.1449014, 0.22010248, 0.19639405])
     ])
     if isinstance(image_input, str):  # If it's a file path
         image = Image.open(image_input).convert('RGB')
@@ -64,7 +64,7 @@ def postprocess_detection(image, detection_output, size=256):
     return black_image
 
 
-# Main process function
+# Main preprocess function
 def process_images(image_dir, classifier_model, detector_model, output_dir, size=256):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)

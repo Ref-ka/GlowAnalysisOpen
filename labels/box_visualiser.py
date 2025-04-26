@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 
 from labels_load import get_coordinates
+from paths import TRAIN_DATA_DIR
 
 
 def visualize_images_with_boxes(image_paths, boxes_list):
@@ -27,14 +28,14 @@ def visualize_images_with_boxes(image_paths, boxes_list):
 
 # Пример использования
 if __name__ == "__main__":
+    dir_path = TRAIN_DATA_DIR + "\\14.04.2025\\images\\for_predictor\\prepared"
     # Пути к изображениям
-    paths = os.listdir("new_cropped_images")
-    paths.sort()
-    image_paths = list(map(lambda x: "new_cropped_images/" + x, sorted(os.listdir("new_cropped_images")[:10])))
+    paths = os.listdir(dir_path)
+    image_paths = list(map(lambda x: dir_path + "\\" + x, paths))
 
     # Список координат прямоугольников для каждого изображения
     # Формат: [[left_x, upper_y, right_x, lower_y], ...]
-    boxes_list = get_coordinates("project-5-at-2025-03-30-14-06-3d3732a9.json")[:10]
+    boxes_list = get_coordinates(TRAIN_DATA_DIR + "\\14.04.2025\\images\\for_predictor\\labels.json", 300)
     print(boxes_list)
 
     # Визуализация

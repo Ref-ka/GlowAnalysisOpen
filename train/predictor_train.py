@@ -5,6 +5,9 @@ from torch.utils.data import DataLoader, Dataset
 from PIL import Image
 import os
 import pandas as pd
+import datetime
+
+from paths import MODELS_DIR, TRAIN_DATA_DIR
 
 
 # Defining the model
@@ -21,7 +24,7 @@ class Predictor(nn.Module):
 # Processing train images
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.03433408, 0.03569807, 0.03586486], std=[0.12090005, 0.12593228, 0.1222396]),
+    transforms.Normalize(mean=[0.04102539, 0.13573588, 0.08836696], std=[0.1449014, 0.22010248, 0.19639405]),
 ])
 
 
@@ -43,22 +46,26 @@ class CustomDataset(Dataset):
         return image, torch.tensor(label, dtype=torch.float)
 
 
-def main(image_folder="", model_folder=""):
-    paths = []
+def main(image_folders: list[str]):
+    dir_names = ["14.04.2025"]
+    image_paths = []
     labels = []
-    for file in os.listdir(image_folder)[:66]:
-        paths.append(f"{image_folder}/" + file)
-        labels_list = file[:-4].replace("  ", " ").split(" ")
+    for name in dir_names:
+        dir_path = TRAIN_DATA_DIR + "\\" + name + f"\\images\\for_predictor\\prepared"
+        image_paths += list(map(lambda image_name: dir_path + "\\" + image_name, os.listdir(dir_path)))
+
+    for path in image_paths:
+        path = path.split("\\")[-1]
+        labels_list = path[:-4].replace("  ", " ").split(" ")
         labels.append(
             [
-                float(labels_list[0][:-1].replace(",", ".")),
-                float(labels_list[1][:-1].replace(",", "."))
+                float(labels_list[0]),
+                float(labels_list[2])
             ]
         )
-    print(labels)
 
     # Data load
-    train_dataset = CustomDataset(paths, labels, transform=transform)
+    train_dataset = CustomDataset(image_paths, labels, transform=transform)
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     # Init model, loss and optimizer
@@ -85,11 +92,8 @@ def main(image_folder="", model_folder=""):
     loss_data.to_csv("predictor_loss.csv")
 
     # Save model
-    torch.save(model.state_dict(), f"{model_folder}/resnet_predictor.pth")
+    torch.save(model.state_dict(), MODELS_DIR + f"\\predictor\\resnet_{datetime.datetime.now().date()}.pth")
 
 
 if __name__ == "__main__":
-    main(
-        "images/prepared",
-        "trained_models"
-    )
+    main(["14.04.2025"])

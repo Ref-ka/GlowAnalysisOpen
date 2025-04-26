@@ -8,8 +8,10 @@ import torchvision.transforms as transforms
 from PIL import Image
 import pandas as pd
 from torchvision import models
+import datetime
 
 from labels.labels_load import get_coordinates
+from paths import MODELS_DIR, TRAIN_DATA_DIR
 
 
 class GlowDataset(Dataset):
@@ -76,13 +78,19 @@ def train_model(model, dataloader, criterion, optimizer, num_epochs=30):
 
 if __name__ == "__main__":
     # Пути к изображениям и координаты bounding box
-    image_paths = list(map(lambda x: "detector_train/" + x, os.listdir("detector_train")))
-    bounding_boxes = get_coordinates("project-5-at-2025-03-30-14-06-3d3732a9.json") + get_coordinates("project-3-at-2025-03-30-09-01-5b359199.json")
+    dir_names = ["14.04.2025"]
+    image_paths = []
+    bounding_boxes = []
+    for name in dir_names:
+        for dir_type in ["for_detector", "for_predictor"]:
+            dir_path = TRAIN_DATA_DIR + "\\" + name + f"\\images\\{dir_type}\\prepared"
+            image_paths += list(map(lambda image_name: dir_path + "\\" + image_name, os.listdir(dir_path)))
+            bounding_boxes += get_coordinates(TRAIN_DATA_DIR + "\\" + name + f"\\images\\{dir_type}\\labels.json", 300)
 
     # Трансформации для изображений
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.03433408, 0.03569807, 0.03586486], std=[0.12090005, 0.12593228, 0.1222396])
+        transforms.Normalize(mean=[0.04102539, 0.13573588, 0.08836696], std=[0.1449014, 0.22010248, 0.19639405])
     ])
 
     # Создаем Dataset и DataLoader
@@ -99,4 +107,4 @@ if __name__ == "__main__":
     trained_model = train_model(model, dataloader, criterion, optimizer, num_epochs=50)
 
     # Сохраняем модель
-    torch.save(trained_model.state_dict(), "glow_detector_resnet.pth")
+    torch.save(trained_model.state_dict(), MODELS_DIR + f"\\detector\\resnet_{datetime.datetime.now().date()}.pth")

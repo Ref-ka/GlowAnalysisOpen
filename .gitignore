@@ -6,7 +6,9 @@ trained_models/*
 videos
 21_01_25.zip
 loss_data.csv
-predictor_loss.csv
+train/predictor_loss.csv
+train/detector_loss.csv
+train/classifier_loss.csv
 .venv
 .idea
 training_data/*
