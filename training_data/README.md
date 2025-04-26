@@ -1,18 +1,7 @@
 Directory for all the data <br/>
 Supposed hierarchy view: <br/>
 
-* training data
-* * dd.mm.yyyy
-* * * images
-* * * * for_detector
-* * * * * prepared
-* * * * * preprocessed_1080
-* * * * * unprepared
-* * * * for_predictor
-* * * * * prepared
-* * * * * preprocessed_1080
-* * * * * unprepared
-* * * videos
+![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/sample_traindata_directory.png?raw=true)
 
 Images with parameters goes to training_data/images/for_detector/unprepared <br/>
 Videos goes just to training_data/videos
