@@ -1,3 +1,14 @@
+Директория для обучающих данных <br/>
+Предполагаемая иерархия: <br/>
+
+![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/sample_traindata_directory.png?raw=true)
+
+Обучающие изображения с параметрами должны находиться в training_data/dd.mm.yyyy/images/for_predictor/unprepared <br/>
+Обучающие видео должны находиться в training_data/dd.mm.yyyy/videos <br/>
+
+Изображения с параметрами и изображения с видео разделены. <br/>
+Это сделано из-за того, что они могли быть получены из разных видео, <br/> следовательно, свечения на этих изображениях могут находиться в разных местах на изображениях, <br/> а это может усложнить процесс обрезки видео. 
+
 Directory for all the data <br/>
 Supposed hierarchy view: <br/>
 
