@@ -2,16 +2,17 @@ Directory for all the data <br/>
 Supposed hierarchy view: <br/>
 
 * training data
-* * images
-* * * for_detector
-* * * * prepared
-* * * * preprocessed_1080
-* * * * unprepared
-* * * for_predictor
-* * * * prepared
-* * * * preprocessed_1080
-* * * * unprepared
-* * videos
+* * dd.mm.yyyy
+* * * images
+* * * * for_detector
+* * * * * prepared
+* * * * * preprocessed_1080
+* * * * * unprepared
+* * * * for_predictor
+* * * * * prepared
+* * * * * preprocessed_1080
+* * * * * unprepared
+* * * videos
 
 Images with parameters goes to training_data/images/for_detector/unprepared <br/>
 Videos goes just to training_data/videos
