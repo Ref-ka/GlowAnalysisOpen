@@ -9,6 +9,9 @@ import datetime
 
 from paths import MODELS_DIR, TRAIN_DATA_DIR
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 
 # Defining the model
 class Predictor(nn.Module):
@@ -24,7 +27,7 @@ class Predictor(nn.Module):
 # Processing train images
 transform = transforms.Compose([
     transforms.ToTensor(),
-    transforms.Normalize(mean=[0.04102539, 0.13573588, 0.08836696], std=[0.1449014, 0.22010248, 0.19639405]),
+    transforms.Normalize(mean=[0.07044805, 0.09651545, 0.07955255], std=[0.17199046, 0.18966906, 0.18283128]),  # Изменяется в соответствии с набором обучающих данных
 ])
 
 
@@ -46,8 +49,11 @@ class CustomDataset(Dataset):
         return image, torch.tensor(label, dtype=torch.float)
 
 
-def main(image_folders: list[str]):
-    dir_names = ["14.04.2025"]
+def main():
+    # TODO: Сделать отдельную функцию для обучения
+
+    # Процесс обучения предиктора
+    dir_names = ["14.04.2025", "17.01.2025", "11.04.2025", "21.01.2025"]
     image_paths = []
     labels = []
     for name in dir_names:
@@ -56,11 +62,11 @@ def main(image_folders: list[str]):
 
     for path in image_paths:
         path = path.split("\\")[-1]
-        labels_list = path[:-4].replace("  ", " ").split(" ")
+        labels_list = path[:-4].replace("_", " ").split(" ")
         labels.append(
             [
                 float(labels_list[0]),
-                float(labels_list[2])
+                float(labels_list[1])
             ]
         )
 
@@ -69,7 +75,7 @@ def main(image_folders: list[str]):
     train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     # Init model, loss and optimizer
-    model = Predictor()
+    model = Predictor().to(device)
     criterion = nn.MSELoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
@@ -79,6 +85,9 @@ def main(image_folders: list[str]):
         model.train()
         running_loss = 0.0
         for images, labels in train_loader:
+            images = images.to(device)
+            labels = labels.to(device)
+
             optimizer.zero_grad()
             outputs = model(images)
             loss = criterion(outputs, labels)
@@ -96,4 +105,4 @@ def main(image_folders: list[str]):
 
 
 if __name__ == "__main__":
-    main(["14.04.2025"])
+    main()

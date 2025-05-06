@@ -3,40 +3,47 @@ import json
 from paths import TRAIN_DATA_DIR
 
 
+def transform_coordinates(value, image_size, constant):
+    return round(((value + constant) / 100) * image_size, 2)
+
+
 def get_coordinates(labels_file: str, image_size: int):
+    """
+    Функция для подгрузки координат разметок из файла labels.json
+    :param labels_file:
+    :param image_size:
+    :return:
+    """
     with open(labels_file) as file:
         data = json.load(file)
 
     coordinates = []
     for image in data:
-        if image["drafts"]:
-            coordinates.append(
-                [
-                    int((image['drafts'][0]["result"][0]["value"]["x"] / 100) * image_size),
-                    int((image['drafts'][0]["result"][0]["value"]["y"] / 100) * image_size),
-                    int(((image['drafts'][0]["result"][0]["value"]["x"] + image['drafts'][0]["result"][0]["value"][
-                        "width"]) / 100) * image_size),
-                    int(((image['drafts'][0]["result"][0]["value"]["y"]) + image['drafts'][0]["result"][0]["value"][
-                        "height"]) / 100 * image_size)
-                ]
-            )
-        else:
-            coordinates.append(
-                [
-                    int((image['annotations'][0]["result"][0]["value"]["x"] / 100) * image_size),
-                    int((image['annotations'][0]["result"][0]["value"]["y"] / 100) * image_size),
-                    int(
-                        ((image['annotations'][0]["result"][0]["value"]["x"] + image['annotations'][0]["result"][0]["value"][
-                            "width"]) / 100) * image_size),
-                    int(((image['annotations'][0]["result"][0]["value"]["y"]) +
-                           image['annotations'][0]["result"][0]["value"][
-                               "height"]) / 100 * image_size)
-                ]
-            )
+        coordinates.append(
+            [
+                transform_coordinates(image['annotations'][0]["result"][0]["value"]["x"], image_size, -1),
+                transform_coordinates(image['annotations'][0]["result"][0]["value"]["y"], image_size, -3),
+                transform_coordinates(
+                    image['annotations'][0]["result"][0]["value"]["x"] + image['annotations'][0]["result"][0]["value"][
+                        "width"],
+                    image_size, 1
+                ),
+                transform_coordinates(
+                    image['annotations'][0]["result"][0]["value"]["y"] + image['annotations'][0]["result"][0]["value"][
+                        "height"],
+                    image_size, 2
+                )
+            ]
+        )
     return coordinates
 
 
 def get_glow_classes(label_file: str):
+    """
+    Функция подгрузки лейблов для обучающих данных для предиктора
+    :param label_file:
+    :return:
+    """
     with open(label_file) as file:
         data = json.load(file)
 

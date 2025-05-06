@@ -1,7 +1,7 @@
 Директория для обучающих данных <br/>
 Предполагаемая иерархия: <br/>
 
-![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/sample_traindata_directory.png?raw=true)
+![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/info_images/sample_traindata_directory.png?raw=true)
 
 Обучающие изображения с параметрами должны находиться в training_data/dd.mm.yyyy/images/for_predictor/unprepared <br/>
 Обучающие видео должны находиться в training_data/dd.mm.yyyy/videos <br/>
@@ -12,7 +12,7 @@
 Directory for all the data <br/>
 Supposed hierarchy view: <br/>
 
-![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/sample_traindata_directory.png?raw=true)
+![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/info_images/sample_traindata_directory.png?raw=true)
 
 Images with parameters goes to training_data/images/for_detector/unprepared <br/>
 Videos goes just to training_data/videos

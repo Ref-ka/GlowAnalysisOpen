@@ -59,8 +59,8 @@ def crop_video(
 
 
 if __name__ == "__main__":
-    crop_video(TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3.avi",
-               TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3_processed.avi",
+    crop_video(TESTING_DATA_DIR + "\\videos\\15.04.2025\\vid_1.avi",
+               TESTING_DATA_DIR + "\\videos\\15.04.2025\\vid_1_resized.avi",
                300,
                "c",
-               [60, -120])
+               [-150, -150])

@@ -6,6 +6,11 @@ from paths import TRAIN_DATA_DIR
 
 
 def calculate_mean_std(image_dirs: list[str]):
+    """
+    Функция для подсчета среднего значения и среднего отклонения в наборе данных для обучения
+    :param image_dirs:
+    :return:
+    """
     # Sums for each channel
     channel_sum = np.zeros(3)
     channel_sum_squared = np.zeros(3)
@@ -38,6 +43,6 @@ def calculate_mean_std(image_dirs: list[str]):
 
 
 if __name__ == "__main__":
-    dir_list = ["14.04.2025"]
+    dir_list = ["14.04.2025", "17.01.2025", "11.04.2025", "21.01.2025"]
     dir_list = list(map(lambda dir_name: TRAIN_DATA_DIR + "\\" + dir_name, dir_list))
     print(calculate_mean_std(dir_list))

@@ -9,26 +9,35 @@ from train.detector_train import GlowDetector
 from train.predictor_train import Predictor
 from paths import MODELS_DIR, TESTING_DATA_DIR
 
-# Paths to your models
-CLASSIFIER_MODEL_PATH = MODELS_DIR + "\\classifier\\resnet_2025-04-26.pth"
-DETECTOR_MODEL_PATH = MODELS_DIR + "\\detector\\resnet_2025-04-26.pth"
-PREDICTOR_MODEL_PATH = MODELS_DIR + "\\predictor\\resnet_2025-04-25.pth"
+# Пути к моделям
+CLASSIFIER_MODEL_PATH = MODELS_DIR + "\\classifier\\resnet_2025-04-30.pth"
+DETECTOR_MODEL_PATH = MODELS_DIR + "\\detector\\resnet_2025-05-03.pth"
+PREDICTOR_MODEL_PATH = MODELS_DIR + "\\predictor\\resnet_2025-04-30.pth"
 
-# Load models
-classifier_model = load_model(CLASSIFIER_MODEL_PATH, PretrainedResNet)
-detector_model = load_model(DETECTOR_MODEL_PATH, GlowDetector)
-prediction_model = load_model(PREDICTOR_MODEL_PATH, Predictor)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
+# Загрузка моделей
+classifier_model = load_model(CLASSIFIER_MODEL_PATH, PretrainedResNet).to(device)
+detector_model = load_model(DETECTOR_MODEL_PATH, GlowDetector).to(device)
+prediction_model = load_model(PREDICTOR_MODEL_PATH, Predictor).to(device)
 
 
-# Video preprocess function
 def process_video(video_path, output_video_path, size=300):
-    # Open the video file
+    """
+    Функция обработки видео системой
+    :param video_path: Путь к выбранному для обработки видео
+    :param output_video_path: Путь для сохранения обработанного видео
+    :param size: Размер видео
+    :return:
+    """
+    # Открытие файла с видео
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print("Error: Could not open video.")
         return
 
-    # Get video properties
+    # Получение данных о видео
     frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     fps = int(cap.get(cv2.CAP_PROP_FPS))
@@ -52,6 +61,8 @@ def process_video(video_path, output_video_path, size=300):
 
         # Preprocess the frame
         image_tensor = preprocess_image(pil_image)
+
+        image_tensor = image_tensor.to(device)
 
         # Classify the frame
         with torch.no_grad():
@@ -91,7 +102,8 @@ def process_video(video_path, output_video_path, size=300):
 
             # Predict parameters using the prediction model
             with torch.no_grad():
-                prediction_output = prediction_model(image_tensor).numpy()
+                prediction_output = prediction_model(image_tensor)
+                prediction_output = prediction_output.cpu().numpy()
 
             # Format the predicted parameters for display
             predicted_text = [
@@ -128,4 +140,4 @@ if __name__ == "__main__":
     input_video_path = TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3_resized.avi"
     output_video_path = TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3_processed.avi"
 
-    process_video(input_video_path, output_video_path)
+    process_video(input_video_path, output_video_path, 300)

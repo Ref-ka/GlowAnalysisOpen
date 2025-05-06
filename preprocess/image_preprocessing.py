@@ -5,6 +5,12 @@ from paths import IMAGES_DIR
 
 
 def preprocess_image(image_path: str, output_dir: str):
+    """
+    Функция приведения изображения к размеру 1080 на 1080
+    :param image_path:
+    :param output_dir:
+    :return:
+    """
     os.makedirs(output_dir, exist_ok=True)
 
     with Image.open(image_path) as img:
@@ -35,6 +41,12 @@ def preprocess_image(image_path: str, output_dir: str):
 
 
 def preprocess_images(image_dir: str, output_dir: str):
+    """
+    Вспомогательная функция для обработки сразу нескольких изображений
+    :param image_dir:
+    :param output_dir:
+    :return:
+    """
     for image_name in os.listdir(image_dir):
         preprocess_image(image_dir + "\\" + image_name, output_dir)
     print("Images have been prepared_for_detector successfully!!!")

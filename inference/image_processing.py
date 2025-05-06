@@ -3,12 +3,12 @@ import torchvision.transforms as transforms
 from PIL import Image
 import numpy as np
 import os
+import cv2
 
-from train.classifier_train import PretrainedResNet
-from train.detector_train import GlowDetector
+from paths import MODELS_DIR, TESTING_DATA_DIR, TRAIN_DATA_DIR
 
 
-# Load models
+# Загрузка моделей
 def load_model(model_path, model_class):
     # Initialize the model architecture
     model = model_class()
@@ -23,11 +23,11 @@ def load_model(model_path, model_class):
     return model
 
 
-# Preprocessing function
+# Предобработка во время обучения
 def preprocess_image(image_input):
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.04102539, 0.13573588, 0.08836696], std=[0.1449014, 0.22010248, 0.19639405])
+        transforms.Normalize(mean=[0.07044805, 0.09651545, 0.07955255], std=[0.17199046, 0.18966906, 0.18283128])
     ])
     if isinstance(image_input, str):  # If it's a file path
         image = Image.open(image_input).convert('RGB')
@@ -38,11 +38,11 @@ def preprocess_image(image_input):
     return transform(image).unsqueeze(0)  # Add batch dimension
 
 
-# Postprocessing function for detector output
-def postprocess_detection(image, detection_output, size=256):
+# Постобработка предсказаний детектора
+def postprocess_detection(image, detection_output, size=300):
     # Assuming detection_output contains bounding boxes in the format [x1, y1, x2, y2]
     black_image = np.zeros((size, size, 3), dtype=np.uint8)
-    detection_output = detection_output * size
+    detection_output = detection_output  # * size
     for box in detection_output:
         x1, y1, x2, y2 = map(int, box)
         glow_area = image[y1:y2, x1:x2]
@@ -65,7 +65,7 @@ def postprocess_detection(image, detection_output, size=256):
 
 
 # Main preprocess function
-def process_images(image_dir, classifier_model, detector_model, output_dir, size=256):
+def process_images(image_dir, classifier_model, detector_model, output_dir, size=300):
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
 
@@ -94,12 +94,15 @@ def process_images(image_dir, classifier_model, detector_model, output_dir, size
 
 
 if __name__ == "__main__":
-    classifier_model_path = "simple_cnn_model.pth"
-    detector_model_path = "glow_detector_resnet.pth"
-    input_image_dir = "detector_train"
-    output_image_dir = "images/prepared"
+    # Используется только для точечной проверки, в основном пайплайне не используется
+    CLASSIFIER_MODEL_PATH = MODELS_DIR + "\\classifier\\resnet_2025-04-30.pth"
+    DETECTOR_MODEL_PATH = MODELS_DIR + "\\detector\\resnet_2025-04-30.pth"
 
-    classifier_model = load_model(classifier_model_path, PretrainedResNet)
-    detector_model = load_model(detector_model_path, GlowDetector)
+    input_image = TRAIN_DATA_DIR + "\\11.04.2025\\images\\for_detector\\prepared\\frame_2.avi_000040.png"
+    # output_image_dir = "images/prepared"
 
-    process_images(input_image_dir, classifier_model, detector_model, output_image_dir)
+    # classifier_model = load_model(CLASSIFIER_MODEL_PATH, PretrainedResNet)
+    # detector_model = load_model(DETECTOR_MODEL_PATH, GlowDetector)
+
+    image = preprocess_image(input_image).cpu().numpy()
+    cv2.imwrite(TRAIN_DATA_DIR + "\\11.04.2025\\images\\for_detector\\test_image.png", image)

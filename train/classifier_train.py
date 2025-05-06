@@ -45,9 +45,12 @@ class PretrainedResNet(nn.Module):
 
 
 def main():
+    # TODO: Сделать отдельную функцию для обучения
+
+    # Процесс обучения классификатора
     # Paths to images and labels
     # Labels has been hardcoded. You need to make it through label-studio in a good way.
-    dir_names = ["14.04.2025"]
+    dir_names = ["14.04.2025", "17.01.2025", "11.04.2025", "21.01.2025"]
     image_paths = []
     labels = []
     for name in dir_names:
@@ -59,7 +62,7 @@ def main():
     # Image transformations
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.04102539, 0.13573588, 0.08836696], std=[0.1449014, 0.22010248, 0.19639405])
+        transforms.Normalize(mean=[0.07044805, 0.09651545, 0.07955255], std=[0.17199046, 0.18966906, 0.18283128])  # Эти значения нужно менять в соответствии с набором обучающих данных
     ])
 
     # Create dataset and dataloader
@@ -78,7 +81,7 @@ def main():
     model.to(device)
 
     # Training loop
-    num_epochs = 50
+    num_epochs = 50  # Можно менять, но ставить больше смысла нет
     for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0

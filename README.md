@@ -15,4 +15,4 @@
 <br />
 
 #### Примерная схема работы системы
-![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/sample_pipeline.jpg?raw=true)
+![alt text](https://github.com/Ref-ka/GlowAnalysis/blob/master/info_images/sample_pipeline.jpg?raw=true)

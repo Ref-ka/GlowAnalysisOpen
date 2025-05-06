@@ -2,7 +2,16 @@ from PIL import Image
 import os
 
 
-def get_crop_box(img_w: int, img_h: int, crop_size: int, pos: str, shift) -> tuple[float, float, float, float]:
+def get_crop_box(img_w: int, img_h: int, crop_size: int, pos: str, shift: list[int] | None) -> tuple[float, float, float, float]:
+    """
+    Функция получения координат обрезки изображения
+    :param img_w:
+    :param img_h:
+    :param crop_size:
+    :param pos:
+    :param shift:
+    :return:
+    """
     if shift:
         shift_x, shift_y = shift[0], shift[1]
     else:
@@ -35,16 +44,17 @@ def get_crop_box(img_w: int, img_h: int, crop_size: int, pos: str, shift) -> tup
     return left, top, left + crop_size, top + crop_size
 
 
-def crop_images(data_path: str, crop_size: int, position: str, save_dir: str, shift=None):
+def crop_images(data_path: str, crop_size: int, save_dir: str, shift: list[int] | None, position: str | None = "c"):
     """
-    Crops square images from given paths to the specified size and position.
+    Функция для обрезки видео до наименьшего размера.
+    Желательно делать изображения для обучения наиболее маленькими для оптимизации процесса обучения модели и её использования
 
     Args:
-        data_path (str): Path of data folder.
-        crop_size (int): Size of the square crop.
-        position (str): Crop position ("l", "lu", "c", "b", etc.).
-        save_dir (str): Directory to save cropped images.
-        shift (list[int] or None): shift for images by X and Y axes
+        data_path (str): Путь к директории с изображениями.
+        crop_size (int): Размер новых обработанных изображений.
+        position (str or None): Позиция обрезки ("l": left/лево, "lu": left_up/лево_верх, "c": center/центр, "b", etc.).
+        save_dir (str): Путь к директории для сохранения обработанных изображений.
+        shift (list[int] or None): сдвиг изображений по X и Y, используется для подгонки когда свечение находится в каком-то трудодоступной области
     """
     image_paths = os.listdir(data_path)
 

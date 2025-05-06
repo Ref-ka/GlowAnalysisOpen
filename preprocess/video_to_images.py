@@ -4,6 +4,13 @@ from pathlib import Path
 
 
 def extract_frames(video_path, output_dir, frame_rate=1):
+    """
+    Функция нарезания видео для обучения на изображения
+    :param video_path:
+    :param output_dir:
+    :param frame_rate:
+    :return:
+    """
     # Check if the output folder exists, if not, create it
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -39,10 +46,18 @@ def extract_frames(video_path, output_dir, frame_rate=1):
 
 
 def cut_videos(video_dir: str, output_dir: str, frame_rate=1):
+    """
+    Вспомогательная функция для обработки нескольких изображений
+    :param video_dir:
+    :param output_dir:
+    :param frame_rate:
+    :return:
+    """
     for video_name in os.listdir(video_dir):
         extract_frames(video_dir + "\\" + video_name, output_dir, frame_rate)
     print("Videos have been cut successfully!!!")
 
 
+# Используется автоматически в prepare images
 if __name__ == "__main__":
     pass
