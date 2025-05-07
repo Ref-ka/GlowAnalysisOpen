@@ -46,3 +46,4 @@ if __name__ == "__main__":
     dir_list = ["14.04.2025", "17.01.2025", "11.04.2025", "21.01.2025"]
     dir_list = list(map(lambda dir_name: TRAIN_DATA_DIR + "\\" + dir_name, dir_list))
     print(calculate_mean_std(dir_list))
+
