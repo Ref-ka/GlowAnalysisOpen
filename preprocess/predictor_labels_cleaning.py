@@ -11,6 +11,7 @@ def rename_files(folder):
     :param folder: Путь к директории с изображениями для изменения имен
     :return:
     """
+    # TODO: Сделать количество параметров опциональным
     number_pattern = re.compile(r'(\d+(?:\.\d+)?)')
     for filename in os.listdir(folder):
         if os.path.isfile(os.path.join(folder, filename)):
