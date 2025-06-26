@@ -1,93 +1,128 @@
+import os
+import logging
+from typing import List, Tuple, Optional
+
 import torch
 import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
-from torch.utils.data import DataLoader, Dataset
 from PIL import Image
-import os
 import pandas as pd
 import datetime
 
 from paths import MODELS_DIR, TRAIN_DATA_DIR
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"Using device: {device}")
+# Настройка логгирования
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(message)s"
+)
+logger = logging.getLogger(__name__)
+
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+logger.info(f"Using device: {DEVICE}")
 
 
-# Defining the model
-class Predictor(nn.Module):
-    def __init__(self):
-        super(Predictor, self).__init__()
-        self.base_model = models.resnet18(pretrained=True)
-        self.base_model.fc = nn.Linear(self.base_model.fc.in_features, 2)
-
-    def forward(self, x):
-        return self.base_model(x)
-
-
-# Processing train images
-transform = transforms.Compose([
-    transforms.ToTensor(),
-    transforms.Normalize(mean=[0.07044805, 0.09651545, 0.07955255], std=[0.17199046, 0.18966906, 0.18283128]),  # Изменяется в соответствии с набором обучающих данных
-])
-
-
-# 3. Создание кастомного Dataset
-class CustomDataset(Dataset):
-    def __init__(self, image_paths, labels, transform=None):
+class PredictorDataset(Dataset):
+    """Dataset для обучения предиктора (регрессия по двум признакам)."""
+    def __init__(
+        self,
+        image_paths: List[str],
+        labels: List[Tuple[float, float]],
+        transform: Optional[transforms.Compose] = None
+    ):
         self.image_paths = image_paths
         self.labels = labels
         self.transform = transform
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.image_paths)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
         image = Image.open(self.image_paths[idx]).convert("RGB")
         label = self.labels[idx]
         if self.transform:
             image = self.transform(image)
-        return image, torch.tensor(label, dtype=torch.float)
+        label_tensor = torch.tensor(label, dtype=torch.float32)
+        return image, label_tensor
 
 
-def main():
-    # TODO: Сделать отдельную функцию для обучения,
-    #  сделать количество признаков опциональным
+class Predictor(nn.Module):
+    """ResNet18-based регрессор для двух признаков."""
+    def __init__(self):
+        super().__init__()
+        self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        self.backbone.fc = nn.Linear(self.backbone.fc.in_features, 2)
 
-    # Процесс обучения предиктора
-    dir_names = ["14.04.2025", "17.01.2025", "11.04.2025", "21.01.2025"]
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        return self.backbone(x)
+
+
+def get_default_transform() -> transforms.Compose:
+    """
+    Возвращает стандартные трансформации для обучения.
+    """
+    return transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(
+            mean=[0.07044805, 0.09651545, 0.07955255],
+            std=[0.17199046, 0.18966906, 0.18283128]
+        )
+    ])
+
+
+def collect_dataset(
+    dir_names: List[str],
+    train_data_dir: str
+) -> Tuple[List[str], List[Tuple[float, float]]]:
+    """
+    Собирает пути к изображениям и метки для обучения предиктора.
+    """
     image_paths = []
     labels = []
     for name in dir_names:
-        dir_path = TRAIN_DATA_DIR + "\\" + name + f"\\images\\for_predictor\\prepared"
-        image_paths += list(map(lambda image_name: dir_path + "\\" + image_name, os.listdir(dir_path)))
+        dir_path = os.path.join(train_data_dir, name, "images", "for_predictor", "prepared")
+        if not os.path.exists(dir_path):
+            logger.warning(f"Directory not found: {dir_path}")
+            continue
+        for image_name in os.listdir(dir_path):
+            image_path = os.path.join(dir_path, image_name)
+            image_paths.append(image_path)
+            # Извлекаем метки из имени файла
+            base = os.path.splitext(image_name)[0]
+            label_strs = base.replace("_", " ").split(" ")
+            if len(label_strs) < 2:
+                logger.warning(f"Cannot parse label from filename: {image_name}")
+                continue
+            try:
+                label = (float(label_strs[0]), float(label_strs[1]))
+            except ValueError:
+                logger.warning(f"Cannot convert label to float: {image_name}")
+                continue
+            labels.append(label)
+    logger.info(f"Total images: {len(image_paths)}")
+    return image_paths, labels
 
-    for path in image_paths:
-        path = path.split("\\")[-1]
-        labels_list = path[:-4].replace("_", " ").split(" ")
-        labels.append(
-            [
-                float(labels_list[0]),
-                float(labels_list[1])
-            ]
-        )
 
-    # Data load
-    train_dataset = CustomDataset(image_paths, labels, transform=transform)
-    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-
-    # Init model, loss and optimizer
-    model = Predictor().to(device)
-    criterion = nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-
-    # Train
-    loss_data = pd.DataFrame(columns=["epoch", "loss"])
-    for epoch in range(40):
+def train_model(
+    model: nn.Module,
+    dataloader: DataLoader,
+    criterion: nn.Module,
+    optimizer: optim.Optimizer,
+    num_epochs: int = 40,
+    loss_csv_path: str = "predictor_loss.csv"
+) -> nn.Module:
+    """
+    Обучение предиктора.
+    """
+    loss_data = []
+    for epoch in range(num_epochs):
         model.train()
         running_loss = 0.0
-        for images, labels in train_loader:
-            images = images.to(device)
-            labels = labels.to(device)
+        for images, labels in dataloader:
+            images = images.to(DEVICE)
+            labels = labels.to(DEVICE)
 
             optimizer.zero_grad()
             outputs = model(images)
@@ -96,14 +131,73 @@ def main():
             optimizer.step()
             running_loss += loss.item()
 
-        loss_data = pd.concat([loss_data, pd.DataFrame([[epoch + 1, running_loss / len(train_loader)]],
-                                                       columns=loss_data.columns)])
-        print(f"Epoch {epoch + 1}, Loss: {loss.item()}")
-    loss_data.to_csv("predictor_loss.csv")
+        epoch_loss = running_loss / len(dataloader)
+        loss_data.append({"epoch": epoch + 1, "loss": epoch_loss})
+        logger.info(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.9f}")
 
-    # Save model
-    torch.save(model.state_dict(), MODELS_DIR + f"\\predictor\\resnet_{datetime.datetime.now().date()}.pth")
+    pd.DataFrame(loss_data).to_csv(loss_csv_path, index=False)
+    logger.info("Training complete")
+    return model
+
+
+def save_model(model: nn.Module, models_dir: str, prefix: str = "resnet") -> str:
+    """
+    Сохраняет веса модели в указанный каталог.
+    """
+    save_dir = os.path.join(models_dir, "predictor")
+    os.makedirs(save_dir, exist_ok=True)
+    filename = f"{prefix}_{datetime.datetime.now().date()}.pth"
+    save_path = os.path.join(save_dir, filename)
+    torch.save(model.state_dict(), save_path)
+    logger.info(f"Model saved to {save_path}")
+    return save_path
+
+
+def train_predictor(
+        dir_names: List[str],
+        train_data_dir: str,
+        models_dir: str,
+        num_epochs: int = 40,
+        batch_size: int = 32,
+        model_prefix: str = "resnet18",
+        learning_rate: float = 0.001,
+        loss_csv_path: str = "predictor_loss.csv"
+) -> str:
+    """
+    Обучает предиктор характеристик свечения и сохраняет модель.
+    Возвращает путь к сохранённой модели.
+    """
+    image_paths, labels = collect_dataset(dir_names, train_data_dir)
+    transform = get_default_transform()
+    dataset = PredictorDataset(image_paths, labels, transform=transform)
+    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    model = Predictor().to(DEVICE)
+    criterion = nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    trained_model = train_model(
+        model,
+        dataloader,
+        criterion,
+        optimizer,
+        num_epochs=num_epochs,
+        loss_csv_path=loss_csv_path
+    )
+
+    save_path = save_model(trained_model, models_dir, prefix=model_prefix)
+    return save_path
 
 
 if __name__ == "__main__":
-    main()
+    dir_names = [
+        "14.04.2025",
+        "17.01.2025",
+        "11.04.2025",
+        "21.01.2025"
+    ]
+    train_predictor(
+        dir_names=dir_names,
+        train_data_dir=TRAIN_DATA_DIR,
+        models_dir=MODELS_DIR
+    )
