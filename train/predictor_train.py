@@ -165,7 +165,7 @@ def train_model(
         loss_data.append({"epoch": epoch + 1, "loss": epoch_loss})
         logger.info(f"Epoch [{epoch + 1}/{num_epochs}], Loss: {epoch_loss:.9f}")
 
-    pd.DataFrame(loss_data).to_csv(loss_csv_path, index=False)
+    pd.DataFrame(loss_data).to_csv(MODELS_DIR + "\\" + loss_csv_path, index=False)
     logger.info("Training complete")
     return model
 

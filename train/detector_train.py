@@ -164,7 +164,7 @@ def train_model(
         if dataset_for_vis and (epoch + 1) % 20 == 0:
             visualize_predictions(model, dataset_for_vis, epoch + 1, DEVICE)
 
-    pd.DataFrame(loss_data).to_csv(loss_csv_path, index=False)
+    pd.DataFrame(loss_data).to_csv(MODELS_DIR + "\\" + loss_csv_path, index=False)
     logger.info("Training complete")
     return model
 

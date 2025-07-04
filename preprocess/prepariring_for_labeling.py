@@ -9,7 +9,8 @@ from paths import TRAIN_DATA_DIR
 def prepare_images(dir_list: list[str],
                    image_size: int,
                    positions: list[str] = None,
-                   shift_list: list[list[list]] = None
+                   shift_list: list[list[list]] = None,
+                   n_images: int = None
                    ):
     """
         Подготовка изображений к разметке.
@@ -19,13 +20,14 @@ def prepare_images(dir_list: list[str],
             image_size (int): Размер подготовленных изображений.
             positions (list[str]): Позиция для обрезки изображений (left, right, top, bottom).
             shift_list (list[list[list]]): Сдвиг для обрезки видео (отдельные сдвиги для детектора и предиктора).
+            n_images (int): Количество изображений, получаемых из каждого видео.
         """
     dir_list = list(map(lambda dir_name: TRAIN_DATA_DIR + "\\" + dir_name, dir_list))
     for i, directory in enumerate(dir_list):
         # preprocess images for detector
         cut_videos(directory + "\\videos",
                    directory + "\\images\\for_detector\\unprepared",
-                   20)
+                   n_images)
         preprocess_images(directory + "\\images\\for_detector\\unprepared",
                           directory + "\\images\\for_detector\\preprocessed_1080")
         crop_images(directory + "\\images\\for_detector\\preprocessed_1080",

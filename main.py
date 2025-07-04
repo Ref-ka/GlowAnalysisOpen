@@ -1,5 +1,4 @@
 import os
-
 from utils.directory_handle import make_dirs_for_train
 from preprocess.prepariring_for_labeling import prepare_images
 from train.detector_train import train_detector
@@ -15,82 +14,64 @@ def newest(path):
     return str(os.path.basename(max(paths, key=os.path.getctime)))
 
 
-if __name__ == "__main__":
-    make_dirs = str(input("Нужно создать иерархию папок для обучающих данных? (да/нет): "))
-    if make_dirs == "да":
-        dir_names = str(input("Введите список нужных папок по датам. Пример: 11.04.2025;14.01.2025\nВвод: ")).split(";")
-        for name in dir_names:
-            make_dirs_for_train(TRAIN_DATA_DIR + "\\" + name)
-    print()
-    input("Теперь перенесите все изображения и видео в нужные папки.\n"
-          "В папки for_predictor нужно переместить заготовленные табличные файлы.\n"
-          "Эти файлы должны быть названы 'predictor_labels.csv'\n"
-          "Если вы все сделали, нажмите enter на клавиатуре: ")
-    print()
-
-    print("Теперь нужно предобработать изображения и видео.\n"
-          "На каждой итерации нужно будет вводить:\n"
-          "    название обрабатываемой папки, размер итоговых изображений и смещения при обработке\n"
-          "Вот пример ввода: 11.04.2025;300;150,-23,20,0\n"
-          "Последние 4 числа указывают как должны смещаться обрезаемые изображения по x и y для детектора и предиктора соответственно.\n"
-          "То есть изображения для детектора сместятся на 150 пикселей вправо и на 23 пикселя вверх. (Начало координат левый верхний угол)")
-
+def ask_yes_no(question):
     while True:
-        inp = str(input("Введите данные для подготовки обучающих изображений (чтобы закончить, введите число 0): "))
-        if inp == "0":
+        ans = input(question + " (да/нет): ").strip().lower()
+        if ans in ["да", "нет"]:
+            return ans == "да"
+        print("Пожалуйста, введите 'да' или 'нет'.")
+
+
+def main():
+    print("Добро пожаловать в систему подготовки и обучения моделей!")
+    if ask_yes_no("Создать структуру папок для новых данных?"):
+        dir_names = input("Введите даты через ; (например: 11.04.2025;14.01.2025): ").split(";")
+        for name in dir_names:
+            make_dirs_for_train(os.path.join(TRAIN_DATA_DIR, name.strip()))
+        print("Папки созданы.\n")
+
+    input("Перенесите изображения и видео в соответствующие папки. Нажмите Enter, когда будете готовы.")
+
+    print("\n=== Предобработка изображений ===")
+    while True:
+        folder = input("Введите имя папки с данными (или 0 для завершения): ").strip()
+        if folder == "0":
             break
-        else:
-            info = inp.split(";")
-            info[2] = info[2].split(",")
-            try:
-                prepare_images([info[0]],
-                               int(info[1]),
-                               shift_list=[
-                                   [
-                                       [int(info[2][0]), int(info[2][1])], [int(info[2][2]), int(info[2][3])]
-                                   ]
-                               ])
-                print("Данные предобработаны!\n"
-                      "Если вам нужно поменять смещения, просто введите те же данные с другими смещениями.")
-            except Exception as e:
-                print(f"Что-то пошло не так: {e}")
-    print()
-    input("Теперь вам нужно сделать лейблы для каждого набора изображений.\n"
-          "Можете посмотреть соответствующие инструкции по использованию label-studio.\n"
-          "Если вы поместили файлы labels.json в нужные папки, можете переходить дальше.\n"
-          "Чтобы продолжить, введите enter: ")
-    print()
-    print("Перейдем к обучению классификатора и предиктора.")
-    image_size, train_names = str(input("Введите размер изображения и названия папок, изображения из которых вы хотите использовать для обучения.\n"
-                            "Вводите в формате: 300;11.04.2025,17.01.2025\n"
-                                        "Чтобы пропустить обучение моделей, введите 0;0\n"
-                            "Введите данные: ")).split(";")
-    if image_size != "0":
         try:
-            train_classifier(train_names.split(","), train_data_dir=TRAIN_DATA_DIR, models_dir=MODELS_DIR)
-            train_detector(train_names.split(","), train_data_dir=TRAIN_DATA_DIR, models_dir=MODELS_DIR, image_size=int(image_size))
-            print("Модели обучены!")
+            size = int(input("Введите размер итогового изображения (по умолчанию 300): ") or "300")
+            shift = input("Введите смещения через , (например: 150,-23,20,0): ") or "150,-23,20,0"
+            shift = [int(x) for x in shift.split(",")]
+            n_images = int(input("Введите количество изображений, сделанных из видео (по умолчанию 10): "))
+            prepare_images([folder], size, shift_list=[[[shift[0], shift[1]], [shift[2], shift[3]]]], n_images=n_images)
+            print("Данные предобработаны!\n")
         except Exception as e:
-            print(f"Во время обучения произошла ошибка: {e}")
-    print()
-    train_names = str(input("Теперь подготовим изображения для обучения предиктора.\n"
-                            "Введите список папок, которые хотите использовать. Пример: 11.04.2025;17.01.2025"
-                            "Введите список: ")).split(";")
-    print()
+            print(f"Ошибка: {e}")
+
+    input("Сделайте разметку в label-studio и поместите labels.json в папки. Нажмите Enter для продолжения.")
+
+    print("\n=== Обучение моделей ===")
+    image_size = input("Введите размер изображения для обучения (по умолчанию 300): ") or "300"
+    train_folders = input("Введите папки для обучения через , (например: 11.04.2025,17.01.2025): ").split(",")
     try:
-        classifier_model = newest(MODELS_DIR + "\\classifier")
-        detector_model = newest(MODELS_DIR + "\\detector")
-        prepare_predictor_images(classifier_name=classifier_model, detector_name=detector_model, dir_list=train_names)
-        print("Данные были подготовлены для обучения предиктора")
+        train_classifier(train_folders, train_data_dir=TRAIN_DATA_DIR, models_dir=MODELS_DIR)
+        train_detector(train_folders, train_data_dir=TRAIN_DATA_DIR, models_dir=MODELS_DIR, image_size=int(image_size))
+        print("Классификатор и детектор обучены!\n")
     except Exception as e:
-        print(f"Что-то пошло не так: {e}")
+        print(f"Ошибка при обучении: {e}")
 
+    print("\n=== Подготовка и обучение предиктора ===")
     try:
-        train_predictor(train_names, TRAIN_DATA_DIR, MODELS_DIR)
-        print("Предиктор был обучен!")
+        classifier_model = newest(os.path.join(MODELS_DIR, "classifier"))
+        detector_model = newest(os.path.join(MODELS_DIR, "detector"))
+        if ask_yes_no("Подготовить данные для предиктора?"):
+            prepare_predictor_images(classifier_name=classifier_model, detector_name=detector_model, dir_list=train_folders)
+        train_predictor(train_folders, TRAIN_DATA_DIR, MODELS_DIR)
+        print("Предиктор обучен!\n")
     except Exception as e:
-        print(f"Ошибка во время обучения предиктора: {e}")
+        print(f"Ошибка при обучении предиктора: {e}")
 
-    print("Этап обучения и подготовки данных окончен. Дальнейшие действия по использованию модели проводятся вручную.")
+    print("Все этапы завершены! Модели готовы к использованию.")
 
-# 11.04.2025;12.04.2025;13.04.2025;14.04.2025;17.01.2025;21.01.2025
+
+if __name__ == "__main__":
+    main()
