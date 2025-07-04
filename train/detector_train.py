@@ -5,12 +5,16 @@ from typing import List, Tuple, Optional
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from torch.utils.data import Dataset, DataLoader
+from torch.utils.data import Dataset, DataLoader, random_split
 import torchvision.transforms as transforms
+from torchvision.ops import box_iou, distance_box_iou_loss
 from PIL import Image
 import pandas as pd
 from torchvision import models
 import datetime
+import albumentations as A
+from albumentations.pytorch import ToTensorV2
+import numpy as np
 
 from labels.labels_load import get_coordinates, get_glow_classes
 from paths import MODELS_DIR, TRAIN_DATA_DIR
@@ -34,7 +38,7 @@ class GlowDataset(Dataset):
             self,
             image_paths: List[str],
             bounding_boxes: List[Tuple[float, float, float, float]],
-            transform: Optional[transforms.Compose] = None
+            transform=None
     ):
         self.image_paths = image_paths
         self.bounding_boxes = bounding_boxes
@@ -44,14 +48,53 @@ class GlowDataset(Dataset):
         return len(self.image_paths)
 
     def __getitem__(self, idx: int) -> Tuple[torch.Tensor, torch.Tensor]:
-        image = Image.open(self.image_paths[idx]).convert("RGB")
+        # image = Image.open(self.image_paths[idx]).convert("RGB")
+        image = np.array(Image.open(self.image_paths[idx]).convert("RGB"))
         bbox = self.bounding_boxes[idx]
 
+        # Albumentations expects bboxes as list of [x_min, y_min, x_max, y_max]
         if self.transform:
-            image = self.transform(image)
+            transformed = self.transform(
+                image=image,
+                bboxes=[bbox],
+                class_labels=[1],  # dummy class, required by albumentations
+            )
+            image = transformed["image"]
+            bbox = transformed["bboxes"][0]
+        else:
+            image = ToTensorV2()(image=image)["image"]
 
         bbox_tensor = torch.tensor(bbox, dtype=torch.float32)
         return image, bbox_tensor
+
+
+def get_train_transform(image_size=300):
+    return A.Compose([
+        # A.HorizontalFlip(p=0.5),
+        # A.VerticalFlip(p=0.2),
+        A.ShiftScaleRotate(
+            shift_limit=0.02,  # до 10% сдвиг
+            scale_limit=0.04,   # до 15% растяжение/сжатие
+            rotate_limit=(-10, 10),
+            p=0.4
+        ),
+        A.RandomBrightnessContrast(p=0.3),
+        A.Normalize(
+            mean=(0.05000697, 0.08205103, 0.05994235),
+            std=(0.14993433, 0.17177274, 0.15937236)
+        ),
+        ToTensorV2()
+    ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['class_labels']))
+
+
+def get_val_transform():
+    return A.Compose([
+        A.Normalize(
+            mean=(0.05000697, 0.08205103, 0.05994235),
+            std=(0.14993433, 0.17177274, 0.15937236)
+        ),
+        ToTensorV2()
+    ], bbox_params=A.BboxParams(format='pascal_voc', label_fields=['class_labels']))
 
 
 class Detector(nn.Module):
@@ -73,10 +116,22 @@ class Detector(nn.Module):
         return x
 
 
+def iou_loss(preds, targets):
+    ious = box_iou(preds, targets)
+    ious_diag = ious.diag()
+    return 1 - ious_diag.mean()
+
+
+def combined_loss(preds, targets, alpha=0.5, beta=1.0):
+    mse = nn.MSELoss()(preds, targets)
+    iou = iou_loss(preds, targets)
+    return alpha * mse + beta * iou
+
+
 def train_model(
         model: nn.Module,
         dataloader: DataLoader,
-        criterion: nn.Module,
+        criterion,
         optimizer: optim.Optimizer,
         num_epochs: int = 30,
         dataset_for_vis: Optional[Dataset] = None,
@@ -140,6 +195,8 @@ def collect_dataset(
             bounding_boxes.extend(boxes)
             glow_classes.extend(classes)
 
+    logger.info(f"Amount of train images {len(image_paths)}")
+
     filtered_image_paths = []
     filtered_bounding_boxes = []
     for img, box, cls in zip(image_paths, bounding_boxes, glow_classes):
@@ -161,10 +218,26 @@ def get_default_transform() -> transforms.Compose:
         # transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.2, hue=0.1),
         transforms.ToTensor(),
         transforms.Normalize(
-            mean=[0.07044805, 0.09651545, 0.07955255],
-            std=[0.17199046, 0.18966906, 0.18283128]
+            mean=[0.05000697, 0.08205103, 0.05994235],
+            std=[0.14993433, 0.17177274, 0.15937236]
         )
     ])
+
+
+def evaluate_mse(model: nn.Module, data_loader: DataLoader, device):
+    model.eval()
+    mse_loss = nn.MSELoss(reduction='sum')
+    total_loss = 0.0
+    total_samples = 0
+    with torch.no_grad():
+        for images, bboxes in data_loader:
+            images = images.to(device)
+            bboxes = bboxes.to(device)
+            preds = model(images)
+            loss = mse_loss(preds, bboxes)
+            total_loss += loss.item()
+            total_samples += images.size(0)
+    return total_loss / total_samples
 
 
 def save_model(model: nn.Module, models_dir: str, prefix: str = "resnet") -> str:
@@ -188,30 +261,47 @@ def train_detector(
         image_size: int = 300,
         loss_csv_path: str = "detector_loss.csv",
         model_prefix: str = "resnet18",
-        learning_rate: float = 0.001
+        learning_rate: float = 0.001,
+        test_size: float = 0.2
 ) -> str:
     """
     Обучает детектор свечения и сохраняет модель.
     Возвращает путь к сохранённой модели.
     """
     image_paths, bounding_boxes = collect_dataset(dir_names, train_data_dir, image_size=image_size)
-    transform = get_default_transform()
-    dataset = GlowDataset(image_paths, bounding_boxes, transform=transform)
-    dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+    train_transform = get_train_transform(image_size=image_size)
+    full_dataset = GlowDataset(image_paths, bounding_boxes, transform=train_transform)
+    test_size = int(len(full_dataset) * test_size)
+    train_size = len(full_dataset) - test_size
+    train_dataset, test_dataset = random_split(full_dataset, [train_size, test_size])
+
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
+
+    # dataset = GlowDataset(image_paths, bounding_boxes, transform=transform)
+    # dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
 
     model = Detector().to(DEVICE)
-    criterion = nn.MSELoss()
+    # criterion = nn.MSELoss()
+    # criterion = distance_box_iou_loss
+    criterion = combined_loss
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
     trained_model = train_model(
         model,
-        dataloader,
+        train_loader,
         criterion,
         optimizer,
         num_epochs=num_epochs,
-        dataset_for_vis=dataset,
+        dataset_for_vis=train_dataset,
         loss_csv_path=loss_csv_path
     )
+
+    train_mse = evaluate_mse(trained_model, train_loader, DEVICE)
+    test_mse = evaluate_mse(trained_model, test_loader, DEVICE)
+    logger.info(f"Train MSE: {train_mse:.6f}")
+    logger.info(f"Test MSE: {test_mse:.6f}")
 
     save_path = save_model(trained_model, models_dir, prefix=model_prefix)
     return save_path
@@ -219,16 +309,18 @@ def train_detector(
 
 if __name__ == "__main__":
     dir_names = [
+        "11.04.2025",
+        "12.04.2025",
+        "13.04.2025",
         "14.04.2025",
         "17.01.2025",
-        "11.04.2025",
         "21.01.2025"
     ]
     train_detector(
         dir_names=dir_names,
         train_data_dir=TRAIN_DATA_DIR,
         models_dir=MODELS_DIR,
-        num_epochs=150,
-        batch_size=32,
-        image_size=300
+        num_epochs=400,
+        batch_size=64,
+        test_size=0.01
     )

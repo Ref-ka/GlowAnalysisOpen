@@ -5,8 +5,8 @@ import numpy as np
 import os
 
 from paths import MODELS_DIR, TRAIN_DATA_DIR
-from train.classifier_train import PretrainedResNet
-from train.detector_train import GlowDetector
+from train.classifier_train import Classifier
+from train.detector_train import Detector
 
 
 # Загрузка моделей
@@ -40,27 +40,32 @@ def preprocess_image(image_input):
 
 
 # Постобработка предсказаний детектора
-def postprocess_detection(image, detection_output, size=300):
+def postprocess_detection(image, detection_output, image_size: int = 300, normalization: bool = False):
     # Assuming detection_output contains bounding boxes in the format [x1, y1, x2, y2]
-    black_image = np.zeros((size, size, 3), dtype=np.uint8)
-    detection_output = detection_output  # * size
+    black_image = np.zeros((image_size, image_size, 3), dtype=np.uint8)
+    detection_output = detection_output * image_size if normalization else detection_output
     for box in detection_output:
-        x1, y1, x2, y2 = map(int, box)
+        x1, y1, x2, y2 = [float(v) for v in box]
+
+        x1 = max(0, min(int(round(x1, 3)), image_size - 1))
+        y1 = max(0, min(int(round(y1, 3)), image_size - 1)) - 5
+        x2 = max(0, min(int(round(x2, 3)), image_size))
+        y2 = max(0, min(int(round(y2, 3)), image_size))
         glow_area = image[y1:y2, x1:x2]
 
         # Get the dimensions of the glow_area
         glow_h, glow_w, _ = glow_area.shape
 
         # Calculate the top-left corner of where to place the glow_area in the black_image
-        start_y = (size - glow_h) // 2
-        start_x = (size - glow_w) // 2
+        start_y = (image_size - glow_h) // 2
+        start_x = (image_size - glow_w) // 2
 
         # Ensure the glow_area fits within the black_image boundaries
-        if start_y < 0 or start_x < 0 or start_y + glow_h > size or start_x + glow_w > size:
+        if start_y < 0 or start_x < 0 or start_y + glow_h > image_size or start_x + glow_w > image_size:
             raise ValueError("Glow area is too large to fit in the black image without resizing.")
 
         # Place the glow_area into the black_image
-        black_image[start_y:start_y + glow_h, start_x:start_x + glow_w] = glow_area
+        black_image[y1:y1 + glow_h, x1:x1 + glow_w] = glow_area
 
     return black_image
 
@@ -101,8 +106,8 @@ def prepare_predictor_images(classifier_name: str, detector_name: str, dir_list:
     for i, directory in enumerate(dir_list):
         process_images(
             directory + "\\images\\for_predictor\\prepared",
-            load_model(classifier_path, PretrainedResNet),
-            load_model(detector_path, GlowDetector),
+            load_model(classifier_path, Classifier),
+            load_model(detector_path, Detector),
             directory + "\\images\\for_predictor\\extracted"
         )
 
@@ -111,6 +116,13 @@ if __name__ == "__main__":
     # Используется для подготовки изображений перед обучением предиктора
     prepare_predictor_images(
         "resnet_2025-04-30.pth",
-        "resnet_2025-05-03.pth",
-        ["11.04.2025"]
+        "resnet18_2025-07-03.pth",
+        [
+            "11.04.2025",
+            "12.04.2025",
+            "13.04.2025",
+            "14.04.2025",
+            "17.01.2025",
+            "21.01.2025"
+        ]
     )

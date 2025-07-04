@@ -37,9 +37,9 @@ def save_images_with_boxes(image_paths: list[str], boxes_list: list, save_dir: s
 
 # Пример использования
 if __name__ == "__main__":
-    dir_paths = ["14.04.2025", "17.01.2025", "11.04.2025"]
+    dir_paths = ["13.04.2025"]  # "14.04.2025", , "11.04.2025"
     for dir_path in dir_paths:
-        for dir_type in ["predictor"]:  # "detector",
+        for dir_type in ["predictor"]:  # ,
             directory = TRAIN_DATA_DIR + "\\" + dir_path + f"\\images\\for_{dir_type}"
             if "visualised_boxes" not in os.listdir(directory):
                 os.mkdir(directory + "\\visualised_boxes")

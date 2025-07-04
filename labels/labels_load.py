@@ -3,15 +3,20 @@ import json
 from paths import TRAIN_DATA_DIR
 
 
-def transform_coordinates(value, image_size, constant):
-    return round(((value + constant) / 100) * image_size, 2)
+def transform(value, image_size, constant=0):
+    return round(((value + constant) / 100) * image_size, 3)
 
 
-def get_coordinates(labels_file: str, image_size: int):
+def normalize(value, image_size):
+    return round(value / image_size, 3)
+
+
+def get_coordinates(labels_file: str, image_size: int, normalization: bool = False):
     """
     Функция для подгрузки координат разметок из файла labels.json
     :param labels_file:
     :param image_size:
+    :param normalization:
     :return:
     """
     with open(labels_file) as file:
@@ -19,22 +24,29 @@ def get_coordinates(labels_file: str, image_size: int):
 
     coordinates = []
     for image in data:
-        coordinates.append(
-            [
-                transform_coordinates(image['annotations'][0]["result"][0]["value"]["x"], image_size, -1),
-                transform_coordinates(image['annotations'][0]["result"][0]["value"]["y"], image_size, -3),
-                transform_coordinates(
-                    image['annotations'][0]["result"][0]["value"]["x"] + image['annotations'][0]["result"][0]["value"][
-                        "width"],
-                    image_size, 1
-                ),
-                transform_coordinates(
-                    image['annotations'][0]["result"][0]["value"]["y"] + image['annotations'][0]["result"][0]["value"][
-                        "height"],
-                    image_size, 2
-                )
-            ]
-        )
+        x = image['annotations'][0]["result"][0]["value"]["x"]
+        y = image['annotations'][0]["result"][0]["value"]["y"]
+        w = image['annotations'][0]["result"][0]["value"]["width"]
+        h = image['annotations'][0]["result"][0]["value"]["height"]
+
+        # Без смещений!
+        x1 = round((x / 100) * image_size, 3) - 10
+        y1 = round((y / 100) * image_size, 3) - 10
+        x2 = round(((x + w) / 100) * image_size, 3) + 10
+        y2 = round(((y + h) / 100) * image_size, 3) + 10
+
+        # Ограничение диапазона
+        x1 = max(0, min(x1, image_size-1))
+        y1 = max(0, min(y1, image_size-1))
+        x2 = max(0, min(x2, image_size))
+        y2 = max(0, min(y2, image_size))
+
+        coordinates.append([x1, y1, x2, y2])
+
+    if normalization:
+        for line in coordinates:
+            for i in range(len(line)):
+                line[i] = round(line[i] / image_size, 3)
     return coordinates
 
 

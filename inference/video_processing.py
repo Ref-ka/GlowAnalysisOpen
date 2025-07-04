@@ -4,31 +4,48 @@ from PIL import Image
 import numpy as np
 
 from image_processing import load_model, preprocess_image, postprocess_detection
-from train.classifier_train import PretrainedResNet
-from train.detector_train import GlowDetector
+from train.classifier_train import Classifier
+from train.detector_train import Detector
 from train.predictor_train import Predictor
 from paths import MODELS_DIR, TESTING_DATA_DIR
 
 # Пути к моделям
 CLASSIFIER_MODEL_PATH = MODELS_DIR + "\\classifier\\resnet_2025-04-30.pth"
-DETECTOR_MODEL_PATH = MODELS_DIR + "\\detector\\resnet_2025-05-03.pth"
-PREDICTOR_MODEL_PATH = MODELS_DIR + "\\predictor\\resnet_2025-04-30.pth"
+DETECTOR_MODEL_PATH = MODELS_DIR + "\\detector\\resnet18_2025-07-03.pth"
+PREDICTOR_MODEL_PATH = MODELS_DIR + "\\predictor\\resnet18_2025-07-03.pth"
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
 # Загрузка моделей
-classifier_model = load_model(CLASSIFIER_MODEL_PATH, PretrainedResNet).to(device)
-detector_model = load_model(DETECTOR_MODEL_PATH, GlowDetector).to(device)
+classifier_model = load_model(CLASSIFIER_MODEL_PATH, Classifier).to(device)
+detector_model = load_model(DETECTOR_MODEL_PATH, Detector).to(device)
 prediction_model = load_model(PREDICTOR_MODEL_PATH, Predictor).to(device)
 
 
-def process_video(video_path, output_video_path, size=300):
+def show_detection(image, detection_output, size):
+    """
+    Показывает изображение с предсказанным боксом.
+    :param image: numpy array (RGB)
+    :param detection_output: выход детектора (например, координаты бокса)
+    :param size: размер изображения
+    """
+    pass
+    # # Получаем изображение с боксом (если postprocess_detection уже рисует бокс)
+    # image_with_box = postprocess_detection(image.copy(), detection_output, size)
+    # # Переводим в BGR для корректного отображения в OpenCV
+    # image_bgr = cv2.cvtColor(image_with_box, cv2.COLOR_RGB2BGR)
+    # cv2.imshow("Detection", image_bgr)
+    # cv2.waitKey(1)  # Показывать 1 мс, чтобы окно не блокировало цикл
+
+
+def process_video(video_path, output_video_path, size=300, use_detector: bool = True):
     """
     Функция обработки видео системой
     :param video_path: Путь к выбранному для обработки видео
     :param output_video_path: Путь для сохранения обработанного видео
     :param size: Размер видео
+    :param use_detector
     :return:
     """
     # Открытие файла с видео
@@ -98,7 +115,9 @@ def process_video(video_path, output_video_path, size=300):
 
             # Postprocess detection
             original_image = np.array(pil_image)
-            processed_frame = postprocess_detection(original_image, detection_output, size)
+            processed_frame = postprocess_detection(original_image, detection_output, size) if use_detector else original_image
+
+            show_detection(original_image, detection_output, size)
 
             # Predict parameters using the prediction model
             with torch.no_grad():
@@ -140,4 +159,4 @@ if __name__ == "__main__":
     input_video_path = TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3_resized.avi"
     output_video_path = TESTING_DATA_DIR + "\\videos\\17.01.2025\\vid_3_processed.avi"
 
-    process_video(input_video_path, output_video_path, 300)
+    process_video(input_video_path, output_video_path, 300, use_detector=True)

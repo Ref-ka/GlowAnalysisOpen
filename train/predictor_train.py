@@ -5,6 +5,7 @@ from typing import List, Tuple, Optional
 import torch
 import torch.nn as nn
 import torch.optim as optim
+from torch.nn.functional import mse_loss
 from torch.utils.data import Dataset, DataLoader
 from torchvision import models, transforms
 from PIL import Image
@@ -81,8 +82,9 @@ def collect_dataset(
     """
     image_paths = []
     labels = []
+
     for name in dir_names:
-        dir_path = os.path.join(train_data_dir, name, "images", "for_predictor", "prepared")
+        dir_path = os.path.join(train_data_dir, name, "images", "for_predictor", "extracted")
         if not os.path.exists(dir_path):
             logger.warning(f"Directory not found: {dir_path}")
             continue
@@ -140,6 +142,22 @@ def train_model(
     return model
 
 
+def evaluate_mse(model: nn.Module, data_loader: DataLoader, device):
+    model.eval()
+    mse_loss = nn.MSELoss(reduction="sum")
+    total_loss = 0.0
+    total_samples = 0
+    with torch.no_grad():
+        for images, targets in data_loader:
+            images = images.to(device)
+            targets = targets.to(device)
+            preds = model(images)
+            loss = mse_loss(preds, targets)
+            total_loss += loss.item()
+            total_samples += images.size(0)
+    return total_loss / total_samples
+
+
 def save_model(model: nn.Module, models_dir: str, prefix: str = "resnet") -> str:
     """
     Сохраняет веса модели в указанный каталог.
@@ -185,19 +203,25 @@ def train_predictor(
         loss_csv_path=loss_csv_path
     )
 
+    mse = evaluate_mse(trained_model, dataloader, DEVICE)
+    logger.info(f"MSE: {mse:.8f}")
+
     save_path = save_model(trained_model, models_dir, prefix=model_prefix)
     return save_path
 
 
 if __name__ == "__main__":
     dir_names = [
+        "11.04.2025",
+        "12.04.2025",
+        "13.04.2025",
         "14.04.2025",
         "17.01.2025",
-        "11.04.2025",
         "21.01.2025"
     ]
     train_predictor(
         dir_names=dir_names,
         train_data_dir=TRAIN_DATA_DIR,
-        models_dir=MODELS_DIR
+        models_dir=MODELS_DIR,
+        num_epochs=100
     )
