@@ -1,7 +1,7 @@
 from preprocess.image_preprocessing import preprocess_images
 from preprocess.video_to_images import cut_videos
 from preprocess.image_resizing import crop_images
-from predictor_labels_cleaning import rename_files
+# from predictor_labels_cleaning import rename_files
 
 from paths import TRAIN_DATA_DIR
 
@@ -42,7 +42,7 @@ def prepare_images(dir_list: list[str],
                     directory + "\\images\\for_predictor\\prepared",
                     shift_list[i][1] if shift_list else None,
                     position=(positions[i] if positions else None))
-        rename_files(directory + "\\images\\for_predictor\\prepared")
+        # rename_files(directory + "\\images\\for_predictor\\prepared")
 
 
 if __name__ == "__main__":

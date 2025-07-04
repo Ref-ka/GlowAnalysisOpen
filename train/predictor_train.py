@@ -105,7 +105,7 @@ def collect_dataset(
             continue
         try:
             data["Name"] = str(dir_path) + "\\" + data["Name"].astype(str) + ".png"
-            image_paths.append(data["Name"].values.tolist())
+            image_paths += data["Name"].values.tolist()
             labels += data.iloc[:, 1:].values.tolist()
         except ValueError:
             logger.warning(f"Cannot convert labels to float: {name}")
@@ -253,3 +253,16 @@ if __name__ == "__main__":
         models_dir=MODELS_DIR,
         num_epochs=50
     )
+    # print(collect_dataset(
+    #     [
+    #         "11.04.2025",
+    #         "12.04.2025",
+    #         "13.04.2025",
+    #         "14.04.2025",
+    #         "17.01.2025",
+    #         "21.01.2025"
+    #     ],
+    #     TRAIN_DATA_DIR
+    # ))
+    # data = pd.read_csv(r"C:\Users\DNS_PC\PycharmProjects\GlowAnalysis\training_data\11.04.2025\images\for_predictor\predictor_labels.csv", delimiter=";")
+    # data.to_csv(r"C:\Users\DNS_PC\PycharmProjects\GlowAnalysis\training_data\11.04.2025\images\for_predictor\predictor_labels.csv", sep=",", index=False)
