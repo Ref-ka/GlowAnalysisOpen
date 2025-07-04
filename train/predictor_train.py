@@ -27,11 +27,12 @@ logger.info(f"Using device: {DEVICE}")
 
 class PredictorDataset(Dataset):
     """Dataset для обучения предиктора (регрессия по двум признакам)."""
+
     def __init__(
-        self,
-        image_paths: List[str],
-        labels: List[Tuple[float, float]],
-        transform: Optional[transforms.Compose] = None
+            self,
+            image_paths: List[str],
+            labels: List[Tuple[float, float]],
+            transform: Optional[transforms.Compose] = None
     ):
         self.image_paths = image_paths
         self.labels = labels
@@ -51,6 +52,7 @@ class PredictorDataset(Dataset):
 
 class Predictor(nn.Module):
     """ResNet18-based регрессор для двух признаков."""
+
     def __init__(self):
         super().__init__()
         self.backbone = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
@@ -74,46 +76,72 @@ def get_default_transform() -> transforms.Compose:
 
 
 def collect_dataset(
-    dir_names: List[str],
-    train_data_dir: str
-) -> Tuple[List[str], List[Tuple[float, float]]]:
+        dir_names: List[str],
+        train_data_dir: str
+) -> Tuple[List[str], List[Tuple[float, float]], int]:
     """
     Собирает пути к изображениям и метки для обучения предиктора.
     """
+    n_features = 0
     image_paths = []
     labels = []
 
     for name in dir_names:
         dir_path = os.path.join(train_data_dir, name, "images", "for_predictor", "extracted")
+        labels_path = os.path.join(train_data_dir, name, "images", "for_predictor", "predictor_labels.csv")
+
         if not os.path.exists(dir_path):
-            logger.warning(f"Directory not found: {dir_path}")
+            logger.warning(f"Images directory not found: {dir_path}")
             continue
-        for image_name in os.listdir(dir_path):
-            image_path = os.path.join(dir_path, image_name)
-            image_paths.append(image_path)
-            # Извлекаем метки из имени файла
-            base = os.path.splitext(image_name)[0]
-            label_strs = base.replace("_", " ").split(" ")
-            if len(label_strs) < 2:
-                logger.warning(f"Cannot parse label from filename: {image_name}")
-                continue
-            try:
-                label = (float(label_strs[0]), float(label_strs[1]))
-            except ValueError:
-                logger.warning(f"Cannot convert label to float: {image_name}")
-                continue
-            labels.append(label)
+        if not os.path.exists(labels_path):
+            logger.warning(f"Labels file not found: {labels_path}")
+            continue
+
+        data = pd.read_csv(labels_path)
+        if n_features == 0:
+            n_features = len(data.iloc[:, 1:].columns)
+        elif n_features != len(data.iloc[:, 1:].columns):
+            logger.warning(f"Cannot parse labels from (different amount of features): {name}")
+            continue
+        try:
+            data["Name"] = str(dir_path) + "\\" + data["Name"].astype(str) + ".png"
+            image_paths.append(data["Name"].values.tolist())
+            labels += data.iloc[:, 1:].values.tolist()
+        except ValueError:
+            logger.warning(f"Cannot convert labels to float: {name}")
+            continue
+
+    # for name in dir_names:
+    #     dir_path = os.path.join(train_data_dir, name, "images", "for_predictor", "extracted")
+    #     if not os.path.exists(dir_path):
+    #         logger.warning(f"Directory not found: {dir_path}")
+    #         continue
+    #     for image_name in os.listdir(dir_path):
+    #         image_path = os.path.join(dir_path, image_name)
+    #         image_paths.append(image_path)
+    #         # Извлекаем метки из имени файла
+    #         base = os.path.splitext(image_name)[0]
+    #         label_strs = base.replace("_", " ").split(" ")
+    #         if len(label_strs) < 2:
+    #             logger.warning(f"Cannot parse label from filename: {image_name}")
+    #             continue
+    #         try:
+    #             label = (float(label_strs[0]), float(label_strs[1]))
+    #         except ValueError:
+    #             logger.warning(f"Cannot convert label to float: {image_name}")
+    #             continue
+    #         labels.append(label)
     logger.info(f"Total images: {len(image_paths)}")
-    return image_paths, labels
+    return image_paths, labels, n_features
 
 
 def train_model(
-    model: nn.Module,
-    dataloader: DataLoader,
-    criterion: nn.Module,
-    optimizer: optim.Optimizer,
-    num_epochs: int = 40,
-    loss_csv_path: str = "predictor_loss.csv"
+        model: nn.Module,
+        dataloader: DataLoader,
+        criterion: nn.Module,
+        optimizer: optim.Optimizer,
+        num_epochs: int = 40,
+        loss_csv_path: str = "predictor_loss.csv"
 ) -> nn.Module:
     """
     Обучение предиктора.
@@ -185,7 +213,7 @@ def train_predictor(
     Обучает предиктор характеристик свечения и сохраняет модель.
     Возвращает путь к сохранённой модели.
     """
-    image_paths, labels = collect_dataset(dir_names, train_data_dir)
+    image_paths, labels, n_features = collect_dataset(dir_names, train_data_dir)
     transform = get_default_transform()
     dataset = PredictorDataset(image_paths, labels, transform=transform)
     dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=True)
@@ -223,5 +251,5 @@ if __name__ == "__main__":
         dir_names=dir_names,
         train_data_dir=TRAIN_DATA_DIR,
         models_dir=MODELS_DIR,
-        num_epochs=100
+        num_epochs=50
     )
